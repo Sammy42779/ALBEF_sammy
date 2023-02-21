@@ -1,13 +1,13 @@
-train_file: ['data/nlvr_train.json']
-val_file: ['data/nlvr_dev.json']                  
-test_file: ['data/nlvr_test.json']  
+train_file: ['/data1/ld/data_json/nlvr_train.json']
+val_file: ['/data1/ld/data_json/nlvr_dev.json']                  
+test_file: ['/data1/ld/data_json/nlvr_test.json']  
 
-image_root: '/export/share/datasets/vision/NLVR2/' 
+image_root: '/data1/ld/data/NLVR2' 
 
 image_res: 384
 batch_size: 16 
 
-bert_config: 'configs/config_bert.json'
+bert_config: '/ssd2/ld/ICCV2023/multimodal_models/ALBEF/configs/config_bert.json'
 
 alpha: 0.4
 distill: True
