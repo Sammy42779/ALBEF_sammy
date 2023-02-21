@@ -14,5 +14,4 @@ source activate base
 python -m torch.distributed.run --nproc_per_node=4 --master_port 1899 Retrieval_mixgen.py \
 --config ${path_dir}/multimodal_models/ALBEF_jq/configs/Retrieval_flickr.yaml \
 --output_dir ${path_dir}/multimodal_models/ALBEF_jq/fine_tune_mixgen/ITR \
---checkpoint ${path_dir}/data/ckpt_ALBEF/pre_train_4m/ALBEF_4M.pth \
---no-jsd
+--checkpoint ${path_dir}/data/ckpt_ALBEF/pre_train_4m/ALBEF_4M.pth
