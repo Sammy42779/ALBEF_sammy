@@ -2,7 +2,7 @@ import json
 import os
 from torch.utils.data import Dataset
 from PIL import Image
-from dataset.utils import pre_caption
+from dataset.utils import pre_caption, aug
 
 
 class ve_dataset(Dataset):
@@ -22,6 +22,64 @@ class ve_dataset(Dataset):
         ann = self.ann[index]
         
         image_path = os.path.join(self.image_root,'%s.jpg'%ann['image'])        
+        image = Image.open(image_path).convert('RGB')   
+        image = self.transform(image)          
+
+        sentence = pre_caption(ann['sentence'], self.max_words)
+
+        return image, sentence, self.labels[ann['label']]
+
+
+
+class ve_dataset_aug(Dataset):
+    def __init__(self, ann_file, transform, image_root, max_words=30):        
+        self.ann = json.load(open(ann_file,'r'))
+        self.transform = transform
+        self.image_root = image_root
+        self.max_words = max_words
+        self.labels = {'entailment':2,'neutral':1,'contradiction':0}
+        
+    def __len__(self):
+        return len(self.ann)
+    
+
+    def __getitem__(self, index):    
+        
+        ann = self.ann[index]
+        
+        image_path = os.path.join(self.image_root,'%s.jpg'%ann['image'])        
+        image = Image.open(image_path).convert('RGB')   
+        # image = self.transform(image)          
+        image = aug(image, self.transform)
+
+        sentence = pre_caption(ann['sentence'], self.max_words)
+
+        return image, sentence, self.labels[ann['label']]
+    
+
+
+class ve_dataset_IC(Dataset):
+    def __init__(self, ann_file, transform, image_root, max_words=30, corruption=None, severity=None):        
+        self.ann = json.load(open(ann_file,'r'))
+        self.transform = transform
+        self.image_root = image_root
+        self.max_words = max_words
+        self.labels = {'entailment':2,'neutral':1,'contradiction':0}
+        self.corruption = corruption
+        self.severity = severity
+        
+    def __len__(self):
+        return len(self.ann)
+    
+
+    def __getitem__(self, index):    
+        
+        ann = self.ann[index]
+        
+        img_clean_id = ann['image']
+        img_IC = f'{img_clean_id}-{self.corruption}-{self.severity}.jpg'
+
+        image_path = os.path.join(self.image_root+'-C', img_IC)        
         image = Image.open(image_path).convert('RGB')   
         image = self.transform(image)          
 
