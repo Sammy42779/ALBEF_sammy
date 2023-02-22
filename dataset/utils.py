@@ -211,6 +211,40 @@ def computeIoU(box1, box2):
         inter = 0
     union = box1[2]*box1[3] + box2[2]*box2[3] - inter
     return float(inter)/union
+       
         
         
-        
+def aug(image, preprocess, mixture_width=3, mixture_depth=-1, aug_severity=3):
+  """Perform AugMix augmentations and compute mixture.
+
+  Args:
+    image: PIL.Image input image
+    preprocess: Preprocessing function which should return a torch tensor.
+
+    mixture_width: Number of augmentation chains to mix per augmented example
+    mixture_depth: Depth of augmentation chains. -1 denotes stochastic depth in [1, 3]
+    aug_severity: Severity of base augmentation operators
+
+  Returns:
+    mixed: Augmented and mixed image.
+  """
+  aug_list = augmentations.augmentations
+#   if args.all_ops:
+#     aug_list = augmentations.augmentations_all
+
+  ws = np.float32(np.random.dirichlet([1] * mixture_width))
+  m = np.float32(np.random.beta(1, 1))
+
+  mix = torch.zeros_like(preprocess(image))
+  for i in range(mixture_width):
+    image_aug = image.copy()
+    depth = mixture_depth if mixture_depth > 0 else np.random.randint(
+        1, 4)
+    for _ in range(depth):
+      op = np.random.choice(aug_list)
+      image_aug = op(image_aug, aug_severity)
+    # Preprocessing commutes since all coefficients are convex
+    mix += ws[i] * preprocess(image_aug)
+
+  mixed = (1 - m) * preprocess(image) + m * mix
+  return mixed        
