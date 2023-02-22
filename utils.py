@@ -268,7 +268,7 @@ def mixgen(image, text, num, lam=0.5):
     return image, text
 
 
-def mixgen_batch(image, text, num, lam=0.5):
+def mixgen_batch(image, text, lam=0.5):
     batch_size = image.size()[0]
     index = np.random.permutation(batch_size)
     for i in range(batch_size):
