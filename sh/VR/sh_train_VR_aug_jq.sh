@@ -1,6 +1,3 @@
-## the checkpoint after TA pre-training, which can be fine-tuned with the following steps.
-
-
 #!/bin/bash
 #SBATCH -o ./fine_tune_aug/job.%j.out    # 脚本执行的输出将被保存在当job.%j.out文件下，%j表示作业号;
 #SBATCH -p v100          # 作业提交的指定分区队列为v100;如果使用rtx，则为-p titan
