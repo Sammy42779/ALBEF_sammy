@@ -25,6 +25,8 @@ class ALBEF(nn.Module):
 
         self.text_encoder = BertModel.from_pretrained(text_encoder, config=bert_config, add_pooling_layer=False)          
 
+        '''three-way classification problem'''
+        ## predict the class probabilities using a multi-layer perceptron (MLP) on the multimodal encoder’s representation of the [CLS] token
         self.cls_head = nn.Sequential(
                   nn.Linear(self.text_encoder.config.hidden_size, self.text_encoder.config.hidden_size),
                   nn.ReLU(),
@@ -56,12 +58,17 @@ class ALBEF(nn.Module):
         image_atts = torch.ones(image_embeds.size()[:-1],dtype=torch.long).to(image.device)        
         
         if train:
+            ## multimodal encoder (using image_embeds)
             output = self.text_encoder(text.input_ids, 
                                        attention_mask = text.attention_mask, 
                                        encoder_hidden_states = image_embeds,
                                        encoder_attention_mask = image_atts,        
                                        return_dict = True
                                       )         
+            ## cls_head: using the [CLS] token (output.last_hidden_state[:,0,:])
+            ## using a multi-layer perceptron (MLP)
+            ## 3-way classification   
+            ## output: class probabilities
             prediction = self.cls_head(output.last_hidden_state[:,0,:])                
             if self.distill:                
                 with torch.no_grad():
@@ -78,10 +85,13 @@ class ALBEF(nn.Module):
                 loss = (1-alpha)*F.cross_entropy(prediction, targets) - alpha*torch.sum(
                     F.log_softmax(prediction, dim=1)*F.softmax(prediction_m, dim=1),dim=1).mean()
             else:
+                ## cross-entropy for classification problem
                 loss = F.cross_entropy(prediction, targets)                
             return loss 
             
         else:
+            '''inference'''
+            ## output the probabilites instead of computing loss
             output = self.text_encoder(text.input_ids, 
                                        attention_mask = text.attention_mask, 
                                        encoder_hidden_states = image_embeds,

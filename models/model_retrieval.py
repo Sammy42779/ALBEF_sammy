@@ -32,6 +32,8 @@ class ALBEF(nn.Module):
         self.temp = nn.Parameter(torch.ones([]) * config['temp'])   
         self.queue_size = config['queue_size']
         self.momentum = config['momentum']  
+        ## for Image-Text Matching
+        ## FC layer followed by softmax to predict a two-class probability
         self.itm_head = nn.Linear(text_width, 2) 
         
         # create momentum models
@@ -64,21 +66,29 @@ class ALBEF(nn.Module):
         image_embeds = self.visual_encoder(image) 
         image_atts = torch.ones(image_embeds.size()[:-1],dtype=torch.long).to(image.device)
 
+        ## 'linear transformations that map the [CLS] embeddings to normalized lower-dimensional (256-d) representations'
+        ## ?[CLS] embeddings: image_embeds[:,0,:] (bs, CLS+768, 577)
         image_feat = F.normalize(self.vision_proj(image_embeds[:,0,:]),dim=-1) 
+        ## text unimodal encoder (without using image_embeds/image_feat)
         text_output = self.text_encoder(text.input_ids, attention_mask = text.attention_mask,                      
                                         return_dict = True, mode = 'text')            
+        ## 提取输出最后一个隐藏层状态量 (BERT)
         text_embeds = text_output.last_hidden_state
         text_feat = F.normalize(self.text_proj(text_embeds[:,0,:]),dim=-1)                 
 
+        ## ground-truth
         idx = idx.view(-1,1)
         idx_all = torch.cat([idx.t(), self.idx_queue.clone().detach()],dim=1)  
         pos_idx = torch.eq(idx, idx_all).float()       
         sim_targets = pos_idx / pos_idx.sum(1,keepdim=True)     
 
+        '''momentum distillation'''
         with torch.no_grad():
             self._momentum_update()
+            ## momentum encoders
             image_embeds_m = self.visual_encoder_m(image) 
             image_feat_m = F.normalize(self.vision_proj_m(image_embeds_m[:,0,:]),dim=-1)  
+            ## 'maintain two queues to store the most recent M image-text representations from the momentum unimodal encoders'
             image_feat_all = torch.cat([image_feat_m.t(),self.image_queue.clone().detach()],dim=1)                                         
             text_output_m = self.text_encoder_m(text.input_ids, attention_mask = text.attention_mask,             
                                                 return_dict = True, mode = 'text')    
@@ -92,9 +102,14 @@ class ALBEF(nn.Module):
                 sim_i2t_targets = alpha * F.softmax(sim_i2t_m, dim=1) + (1 - alpha) * sim_targets
                 sim_t2i_targets = alpha * F.softmax(sim_t2i_m, dim=1) + (1 - alpha) * sim_targets 
 
+        ## 'softmax-normalized image-to-text and text-to-image similarity'
+        ## self.temp: 'learnable temperature parameter'
+        ## predicted similarity score
         sim_i2t = image_feat @ text_feat_all / self.temp 
         sim_t2i = text_feat @ image_feat_all / self.temp           
 
+        ## cross-entropy between predict and ground-truth one-hot similarity
+        ## sim_i2t and sim_i2t_targets (distill) or sim_targets (non-distill)
         if self.distill:
             loss_i2t = -torch.sum(F.log_softmax(sim_i2t, dim=1)*sim_i2t_targets,dim=1).mean()
             loss_t2i = -torch.sum(F.log_softmax(sim_t2i, dim=1)*sim_t2i_targets,dim=1).mean() 
@@ -106,8 +121,11 @@ class ALBEF(nn.Module):
 
         self._dequeue_and_enqueue(image_feat_m, text_feat_m, idx)
 
+        '''loss_ITM'''
+        ## predicts whether a pair of image and text is positive (matched) or negative (not matched)
         ###=================================###
         # forward the positve image-text pair
+        ## 'use the multimodal encoder’s output embedding of the [CLS] token as the joint representation of the image-text pair'
         output_pos = self.text_encoder(encoder_embeds = text_embeds, 
                                         attention_mask = text.attention_mask,
                                         encoder_hidden_states = image_embeds,
@@ -144,6 +162,7 @@ class ALBEF(nn.Module):
         text_embeds_all = torch.cat([text_embeds, text_embeds_neg],dim=0)     
         text_atts_all = torch.cat([text.attention_mask, text_atts_neg],dim=0)     
 
+        ## For each image in a mini-batch, we sample one negative text from the same batch
         image_embeds_all = torch.cat([image_embeds_neg,image_embeds],dim=0)
         image_atts_all = torch.cat([image_atts,image_atts],dim=0)
 
@@ -158,6 +177,8 @@ class ALBEF(nn.Module):
         vl_embeddings = torch.cat([output_pos.last_hidden_state[:,0,:], output_neg.last_hidden_state[:,0,:]],dim=0)
         vl_output = self.itm_head(vl_embeddings)            
 
+        ## 2-dimensional one-hot vector representing of the ground-truth label
+        ## 1(matched) and 0(not matched)
         itm_labels = torch.cat([torch.ones(bs,dtype=torch.long),torch.zeros(2*bs,dtype=torch.long)],
                                dim=0).to(image.device)
         loss_itm = F.cross_entropy(vl_output, itm_labels)     
