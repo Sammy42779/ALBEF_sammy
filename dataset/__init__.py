@@ -4,7 +4,7 @@ from torchvision import transforms
 from PIL import Image
 
 from dataset.caption_dataset import re_train_dataset, re_eval_dataset, pretrain_dataset, re_train_dataset_aug, re_eval_dataset_IC
-from dataset.nlvr_dataset import nlvr_dataset
+from dataset.nlvr_dataset import nlvr_dataset, nlvr_dataset_aug
 from dataset.ve_dataset import ve_dataset, ve_dataset_aug, ve_dataset_IC
 from dataset.vqa_dataset import vqa_dataset
 from dataset.grounding_dataset import grounding_dataset
@@ -70,7 +70,13 @@ def create_dataset(dataset, config, corruption=None, severity=None, no_jsd=False
         train_dataset = nlvr_dataset(config['train_file'], train_transform, config['image_root'])  
         val_dataset = nlvr_dataset(config['val_file'], test_transform, config['image_root'])  
         test_dataset = nlvr_dataset(config['test_file'], test_transform, config['image_root'])                
-        return train_dataset, val_dataset, test_dataset        
+        return train_dataset, val_dataset, test_dataset       
+
+    elif dataset=='nlvr_aug':   
+        train_dataset = nlvr_dataset_aug(config['train_file'], train_transform, config['image_root'])  
+        val_dataset = nlvr_dataset(config['val_file'], test_transform, config['image_root'])  
+        test_dataset = nlvr_dataset(config['test_file'], test_transform, config['image_root'])                
+        return train_dataset, val_dataset, test_dataset     
                
     elif dataset=='ve':   
         train_dataset = ve_dataset(config['train_file'], train_transform, config['image_root'])  
