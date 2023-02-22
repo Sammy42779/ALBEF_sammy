@@ -3,7 +3,7 @@ val_file: '/data1/ld/data/data_json/flickr30k_val.json'
 test_file: '/data1/ld/data/data_json/flickr30k_test.json'
 image_root: '/data1/ld/data' #flickr30k-images/
 
-bert_config: '/ssd2/ld/ICCV2023/multimodal_models/ALBEF/configs/config_bert.json'
+bert_config: '/ssd2/ld/ICCV2023/multimodal_models/ALBEF_sammy/configs/config_bert.json'
 
 image_res: 384
 batch_size_train: 32
