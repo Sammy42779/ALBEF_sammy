@@ -14,4 +14,4 @@ source activate base
 python -m torch.distributed.run --nproc_per_node=4 --master_port 1899 NLVR_aug.py \
 --config ${path_dir}/multimodal_models/ALBEF_sammy/configs/NLVR_jq.yaml \
 --output_dir ${path_dir}/multimodal_models/ALBEF_sammy/fine_tune_aug/VR \
---checkpoint ${path_dir}/data/checkpoint/ckpt_ALBEF/pre_train_14m/ALBEF.pth
+--checkpoint ${path_dir}/data/checkpoint/ckpt_ALBEF/ckpt_VR_pretrain/pretrain_model_nlvr.pth
