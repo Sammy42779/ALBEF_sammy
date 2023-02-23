@@ -6,7 +6,7 @@ from PIL import Image
 from dataset.caption_dataset import re_train_dataset, re_eval_dataset, pretrain_dataset, re_train_dataset_aug, re_eval_dataset_IC
 from dataset.nlvr_dataset import nlvr_dataset, nlvr_dataset_aug
 from dataset.ve_dataset import ve_dataset, ve_dataset_aug, ve_dataset_IC
-from dataset.vqa_dataset import vqa_dataset
+from dataset.vqa_dataset import vqa_dataset, vqa_dataset_aug
 from dataset.grounding_dataset import grounding_dataset
 
 from dataset.randaugment import RandomAugment
@@ -63,6 +63,11 @@ def create_dataset(dataset, config, corruption=None, severity=None, no_jsd=False
 
     elif dataset=='vqa': 
         train_dataset = vqa_dataset(config['train_file'], train_transform, config['vqa_root'], config['vg_root'], split='train') 
+        vqa_test_dataset = vqa_dataset(config['test_file'], test_transform, config['vqa_root'], config['vg_root'], split='test', answer_list=config['answer_list'])       
+        return train_dataset, vqa_test_dataset
+    
+    elif dataset=='vqa_aug': 
+        train_dataset = vqa_dataset_aug(config['train_file'], train_transform, config['vqa_root'], config['vg_root'], split='train') 
         vqa_test_dataset = vqa_dataset(config['test_file'], test_transform, config['vqa_root'], config['vg_root'], split='test', answer_list=config['answer_list'])       
         return train_dataset, vqa_test_dataset
 

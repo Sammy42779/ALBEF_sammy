@@ -117,7 +117,7 @@ def main(args, config):
     
     #### Dataset #### 
     print("Creating vqa datasets")
-    datasets = create_dataset('vqa', config)   
+    datasets = create_dataset('vqa_aug', config)   
     
     if args.distributed:
         num_tasks = utils.get_world_size()
@@ -145,8 +145,7 @@ def main(args, config):
         
     if args.checkpoint:    
         checkpoint = torch.load(args.checkpoint, map_location='cpu') 
-        # state_dict = checkpoint['model']
-        state_dict = checkpoint
+        state_dict = checkpoint['model']
         
         # reshape positional embedding to accomodate for image resolution change
         pos_embed_reshaped = interpolate_pos_embed(state_dict['visual_encoder.pos_embed'],model.visual_encoder)         
@@ -235,6 +234,7 @@ def main(args, config):
             
 
 if __name__ == '__main__':
+    # os.environ['CUDA_VISIBLE_DEVICES'] = '3'
     parser = argparse.ArgumentParser()
     parser.add_argument('--config', default='./configs/VQA.yaml') 
     parser.add_argument('--checkpoint', default='') 
