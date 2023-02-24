@@ -145,7 +145,6 @@ def main(args, config):
         
     if args.checkpoint:    
         checkpoint = torch.load(args.checkpoint, map_location='cpu') 
-        # state_dict = checkpoint['model']
         state_dict = checkpoint
         
         # reshape positional embedding to accomodate for image resolution change
