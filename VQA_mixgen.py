@@ -149,8 +149,7 @@ def main(args, config):
         
     if args.checkpoint:    
         checkpoint = torch.load(args.checkpoint, map_location='cpu') 
-        # state_dict = checkpoint['model']
-        state_dict = checkpoint
+        state_dict = checkpoint['model']
         
         # reshape positional embedding to accomodate for image resolution change
         pos_embed_reshaped = interpolate_pos_embed(state_dict['visual_encoder.pos_embed'],model.visual_encoder)         
@@ -240,9 +239,9 @@ def main(args, config):
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
-    os.environ['CUDA_VISIBLE_DEVICES'] = '3'
+    # os.environ['CUDA_VISIBLE_DEVICES'] = '3'
     parser.add_argument('--config', default='./configs/VQA.yaml') 
-    parser.add_argument('--checkpoint', default='') 
+    parser.add_argument('--checkpoint', default='/data1/ld/checkpoint/ckpt_ALBEF/pre_train_14m/ALBEF.pth') 
     parser.add_argument('--output_dir', default='output/vqa')
     parser.add_argument('--evaluate', action='store_true')    
     parser.add_argument('--text_encoder', default='bert-base-uncased')
