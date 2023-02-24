@@ -277,3 +277,18 @@ def mixgen_batch(image, text, lam=0.5):
         # text concat
         text[i] = text[i] + " " + text[index[i]]
     return image, text
+
+
+def mixgen_batch_vqa(image, question, answer, weights, lam=0.5):
+    batch_size = image.size()[0]
+    index = np.random.permutation(batch_size)
+    for i in range(batch_size):
+        # image mixup
+        image[i,:] = lam * image[i,:] + (1 - lam) * image[index[i],:]
+        # text concat
+        question[i] = question[i] + " " + question[index[i]]
+        # answerr concat
+        answer[i] = answer[i] + " " + answer[index[i]]
+        # weights mixup
+        weights[i,:] = lam * weights[i,:] + (1 - lam) * weights[index[i],:]
+    return image, question, answer, weights

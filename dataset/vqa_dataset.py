@@ -35,6 +35,12 @@ class vqa_dataset(Dataset):
             image_path = os.path.join(self.vqa_root,ann['image'])    
         elif ann['dataset']=='vg':
             image_path = os.path.join(self.vg_root,ann['image'])  
+            image_num = ann['image'].split('/')[-1]
+            
+            if os.path.exists(f'{self.vg_root}/VG_100K_2/{image_num}'):
+                image_path = f'{self.vg_root}/VG_100K_2/{image_num}' 
+            else:
+                image_path = f'{self.vg_root}/VG_100K/{image_num}'
             
         image = Image.open(image_path).convert('RGB')   
         image = self.transform(image)          
