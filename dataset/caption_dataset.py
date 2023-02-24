@@ -47,7 +47,7 @@ class re_train_dataset(Dataset):
 
 
 class re_train_dataset_aug(Dataset):
-    def __init__(self, ann_file, transform, image_root, max_words=30, no_jsd=False):        
+    def __init__(self, ann_file, transform, image_root, max_words=30):        
         self.ann = []
         for f in ann_file:
             self.ann += json.load(open(f,'r'))
@@ -55,7 +55,6 @@ class re_train_dataset_aug(Dataset):
         self.image_root = image_root
         self.max_words = max_words
         self.img_ids = {}   
-        self.no_jsd = no_jsd
         
         n = 0
         for ann in self.ann:
@@ -78,12 +77,7 @@ class re_train_dataset_aug(Dataset):
 
         caption = pre_caption(ann['caption'], self.max_words) 
 
-        if self.no_jsd:
-            return aug(image, self.transform), caption, self.img_ids[ann['image_id']]
-        else:
-            im_tuple = (self.transform(image), aug(image, self.transform),
-                  aug(image, self.transform))
-            return im_tuple, caption, self.img_ids[ann['image_id']]    
+        return aug(image, self.transform), caption, self.img_ids[ann['image_id']]
     
 
 

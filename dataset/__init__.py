@@ -13,7 +13,7 @@ from dataset.randaugment import RandomAugment
 
 from torchvision.transforms import InterpolationMode
 
-def create_dataset(dataset, config, corruption=None, severity=None, no_jsd=False):
+def create_dataset(dataset, config, corruption=None, severity=None):
     
     normalize = transforms.Normalize((0.48145466, 0.4578275, 0.40821073), (0.26862954, 0.26130258, 0.27577711))
     
@@ -56,7 +56,7 @@ def create_dataset(dataset, config, corruption=None, severity=None, no_jsd=False
         return train_dataset, val_dataset, test_dataset   
     
     elif dataset=='re_aug': # for training
-        train_dataset = re_train_dataset_aug(config['train_file'], train_transform, config['image_root'], no_jsd=no_jsd)
+        train_dataset = re_train_dataset_aug(config['train_file'], train_transform, config['image_root'])
         val_dataset = re_eval_dataset(config['val_file'], test_transform, config['image_root'])  
         test_dataset = re_eval_dataset(config['test_file'], test_transform, config['image_root'])                
         return train_dataset, val_dataset, test_dataset   
