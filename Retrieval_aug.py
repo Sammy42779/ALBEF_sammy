@@ -235,7 +235,7 @@ def main(args, config):
 
     #### Dataset #### 
     print("Creating retrieval dataset")
-    train_dataset, val_dataset, test_dataset = create_dataset('re_aug', config, no_jsd=args.no_jsd)  
+    train_dataset, val_dataset, test_dataset = create_dataset('re_aug', config)  
 
     if args.distributed:
         num_tasks = utils.get_world_size()
