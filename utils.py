@@ -290,5 +290,5 @@ def mixgen_batch_vqa(image, question, answer, weights, lam=0.5):
         # answerr concat
         answer[i] = answer[i] + " " + answer[index[i]]
         # weights mixup
-        weights[i,:] = lam * weights[i,:] + (1 - lam) * weights[index[i],:]
+        weights[i] = lam * weights[i] + (1 - lam) * weights[index[i]]
     return image, question, answer, weights
