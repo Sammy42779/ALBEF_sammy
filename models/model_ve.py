@@ -19,7 +19,7 @@ class ALBEF(nn.Module):
 
         self.visual_encoder = VisionTransformer(
             img_size=config['image_res'], patch_size=16, embed_dim=768, depth=12, num_heads=12, 
-            mlp_ratio=4, qkv_bias=True, norm_layer=partial(nn.LayerNorm, eps=1e-6))    
+            mlp_ratio=4, qkv_bias=True, norm_layer=partial(nn.LayerNorm, eps=1e-6), p_shuffle=False)    
 
         bert_config = BertConfig.from_json_file(config['bert_config'])
 
@@ -52,9 +52,9 @@ class ALBEF(nn.Module):
             self.momentum = 0.995
             
             
-    def forward(self, image, text, targets, alpha=0, train=True):
+    def forward(self, image, text, targets, alpha=0, train=True, p_shuffle=False):
         
-        image_embeds = self.visual_encoder(image) 
+        image_embeds = self.visual_encoder(image, p_shuffle=p_shuffle) 
         image_atts = torch.ones(image_embeds.size()[:-1],dtype=torch.long).to(image.device)        
         
         if train:

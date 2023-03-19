@@ -101,7 +101,7 @@ class VisionTransformer(nn.Module):
     """
     def __init__(self, img_size=224, patch_size=16, in_chans=3, num_classes=1000, embed_dim=768, depth=12,
                  num_heads=12, mlp_ratio=4., qkv_bias=True, qk_scale=None, representation_size=None,
-                 drop_rate=0., attn_drop_rate=0., drop_path_rate=0., norm_layer=None):
+                 drop_rate=0., attn_drop_rate=0., drop_path_rate=0., norm_layer=None, p_shuffle=False):
         """
         Args:
             img_size (int, tuple): input image size
@@ -129,7 +129,7 @@ class VisionTransformer(nn.Module):
         num_patches = self.patch_embed.num_patches
 
         self.cls_token = nn.Parameter(torch.zeros(1, 1, embed_dim))
-        self.pos_embed = nn.Parameter(torch.zeros(1, num_patches + 1, embed_dim))
+        self.pos_embed = nn.Parameter(torch.zeros(1, num_patches + 1, embed_dim))  ## num_patches + 1 (CLS token)
         self.pos_drop = nn.Dropout(p=drop_rate)
 
         dpr = [x.item() for x in torch.linspace(0, drop_path_rate, depth)]  # stochastic depth decay rule
@@ -157,14 +157,20 @@ class VisionTransformer(nn.Module):
     def no_weight_decay(self):
         return {'pos_embed', 'cls_token'}
 
-    def forward(self, x, register_blk=-1):
-        B = x.shape[0]
-        x = self.patch_embed(x)
+    def forward(self, x, register_blk=-1, p_shuffle=False):
+        B = x.shape[0]  # batch_size = 64
+        x = self.patch_embed(x)  # 将输入图像转换为分块表示 [64,3,384,384] -> [64,576,768]: 一张图片被分成很多个patch, 一个patch的大小是16x16, 那么384x384的图像就会被分成576个patch
 
-        cls_tokens = self.cls_token.expand(B, -1, -1)  # stole cls_tokens impl from Phil Wang, thanks
-        x = torch.cat((cls_tokens, x), dim=1)
+        cls_tokens = self.cls_token.expand(B, -1, -1)  # stole cls_tokens impl from Phil Wang, thanks  [1,1,768] -> [64,1,768]
+        x = torch.cat((cls_tokens, x), dim=1)  # 把CLS放在序列的最前面 [64,576,768] -> [64,577,768]
   
-        x = x + self.pos_embed[:,:x.size(1),:]
+        if p_shuffle:
+            perm = torch.randperm(self.pos_embed.size(1))
+            # Shuffle the tensor along the second dimension using the permutation
+            shuffled_pos_embed = self.pos_embed[:, perm, :]
+            x = x + shuffled_pos_embed[:,:x.size(1),:]   # add position embedding, 加在patch维度上
+        else:
+            x = x + self.pos_embed[:,:x.size(1),:]   # add position embedding, 加在patch维度上
         x = self.pos_drop(x)
 
         for i,blk in enumerate(self.blocks):
