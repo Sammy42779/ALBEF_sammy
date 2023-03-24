@@ -33,6 +33,12 @@ class ALBEF(nn.Module):
                   nn.Linear(self.text_encoder.config.hidden_size, 3)
                 )
 
+        embed_dim = 256        
+        vision_width = 768
+        text_width = self.text_encoder.config.hidden_size
+        self.vision_proj = nn.Linear(vision_width, embed_dim)
+        self.text_proj = nn.Linear(text_width, embed_dim)   
+
         if self.distill:
             self.visual_encoder_m = VisionTransformer(
                 img_size=config['image_res'], patch_size=16, embed_dim=768, depth=12, num_heads=12, 
@@ -52,10 +58,15 @@ class ALBEF(nn.Module):
             self.momentum = 0.995
             
             
-    def forward(self, image, text, targets, alpha=0, train=True, p_shuffle=False):
+    def forward(self, image, text, targets, alpha=0, train=True, p_shuffle=False, weight=False):
         
         image_embeds = self.visual_encoder(image, p_shuffle=p_shuffle) 
-        image_atts = torch.ones(image_embeds.size()[:-1],dtype=torch.long).to(image.device)        
+        image_atts = torch.ones(image_embeds.size()[:-1],dtype=torch.long).to(image.device)    
+        image_cls = self.vision_proj(image_embeds[:,0,:])  
+
+        text_output = self.text_encoder(text.input_ids, attention_mask = text.attention_mask, mode='text')  
+        text_embeds = text_output.last_hidden_state   
+        text_cls = F.normalize(self.text_proj(text_embeds[:,0,:]))
         
         if train:
             ## multimodal encoder (using image_embeds)
@@ -69,7 +80,19 @@ class ALBEF(nn.Module):
             ## using a multi-layer perceptron (MLP)
             ## 3-way classification   
             ## output: class probabilities
-            prediction = self.cls_head(output.last_hidden_state[:,0,:])                
+            prediction = self.cls_head(output.last_hidden_state[:,0,:])     
+
+            if weight == True:
+
+                kl_loss = F.kl_div(image_cls.log_softmax(dim=-1), text_cls.softmax(dim=-1), reduction='none').sum(dim=-1)
+                l2_loss = F.pairwise_distance(image_cls, text_cls, p=2)
+                # 计算权重
+                l2_weight = 1.0 / torch.pow(l2_loss, 2)
+                # 对权重进行归一化
+                l2_weight = l2_weight / torch.sum(l2_weight)
+
+                weights = l2_weight
+
             if self.distill:                
                 with torch.no_grad():
                     self._momentum_update()
@@ -82,11 +105,15 @@ class ALBEF(nn.Module):
                                               )           
                     prediction_m = self.cls_head_m(output_m.last_hidden_state[:,0,:])   
 
-                loss = (1-alpha)*F.cross_entropy(prediction, targets) - alpha*torch.sum(
+                # loss = (1-alpha)*F.cross_entropy(prediction, targets) - alpha*torch.sum(
+                #     F.log_softmax(prediction, dim=1)*F.softmax(prediction_m, dim=1),dim=1).mean()
+                loss = (1-alpha)*F.cross_entropy(prediction, targets, weight=weights) - alpha*torch.sum(
                     F.log_softmax(prediction, dim=1)*F.softmax(prediction_m, dim=1),dim=1).mean()
             else:
                 ## cross-entropy for classification problem
-                loss = F.cross_entropy(prediction, targets)                
+                # loss = F.cross_entropy(prediction, targets)    
+                loss = F.cross_entropy(prediction, targets, weight=weights)    
+
             return loss 
             
         else:
@@ -98,7 +125,7 @@ class ALBEF(nn.Module):
                                        encoder_attention_mask = image_atts,        
                                        return_dict = True
                                       )         
-            prediction = self.cls_head(output.last_hidden_state[:,0,:])                        
+            prediction = self.cls_head(output.last_hidden_state[:,0,:])   # CLS token: shape=[bs, 768]                   
             return prediction
  
 
