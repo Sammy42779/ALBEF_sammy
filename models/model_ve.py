@@ -62,11 +62,12 @@ class ALBEF(nn.Module):
         
         image_embeds = self.visual_encoder(image, p_shuffle=p_shuffle) 
         image_atts = torch.ones(image_embeds.size()[:-1],dtype=torch.long).to(image.device)    
-        image_cls = self.vision_proj(image_embeds[:,0,:])  
 
-        text_output = self.text_encoder(text.input_ids, attention_mask = text.attention_mask, mode='text')  
-        text_embeds = text_output.last_hidden_state   
-        text_cls = F.normalize(self.text_proj(text_embeds[:,0,:]))
+        ## D: to get cls token for computing weights
+        image_cls = self.vision_proj(image_embeds[:,0,:].detach()).detach()  
+        text_output = self.text_encoder(text.input_ids, attention_mask = text.attention_mask, mode='text')
+        text_embeds = text_output.last_hidden_state.detach()   
+        text_cls = F.normalize(self.text_proj(text_embeds[:,0,:])).detach()
         
         if train:
             ## multimodal encoder (using image_embeds)
@@ -82,6 +83,7 @@ class ALBEF(nn.Module):
             ## output: class probabilities
             prediction = self.cls_head(output.last_hidden_state[:,0,:])     
 
+            ## D: to assign weights
             if weight == True:
 
                 kl_loss = F.kl_div(image_cls.log_softmax(dim=-1), text_cls.softmax(dim=-1), reduction='none').sum(dim=-1)
@@ -107,12 +109,13 @@ class ALBEF(nn.Module):
 
                 # loss = (1-alpha)*F.cross_entropy(prediction, targets) - alpha*torch.sum(
                 #     F.log_softmax(prediction, dim=1)*F.softmax(prediction_m, dim=1),dim=1).mean()
-                loss = (1-alpha)*F.cross_entropy(prediction, targets, weight=weights) - alpha*torch.sum(
+                loss = F.cross_entropy(prediction, targets, reduction='none')
+                loss = loss.mul(weights).mean()
+                loss = (1-alpha)*loss - alpha*torch.sum(
                     F.log_softmax(prediction, dim=1)*F.softmax(prediction_m, dim=1),dim=1).mean()
             else:
                 ## cross-entropy for classification problem
-                # loss = F.cross_entropy(prediction, targets)    
-                loss = F.cross_entropy(prediction, targets, weight=weights)    
+                loss = F.cross_entropy(prediction, targets)    
 
             return loss 
             
