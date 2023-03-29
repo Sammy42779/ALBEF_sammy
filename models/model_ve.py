@@ -93,7 +93,6 @@ class ALBEF(nn.Module):
                 weights = l2_weight
 
             elif weight == 'kl':
-                print('-------------------------kl')
                 kl_loss = F.kl_div(image_cls.log_softmax(dim=-1), text_cls.softmax(dim=-1), reduction='none').sum(dim=-1)
                 kl_weight = 1.0 / torch.pow(kl_loss, 2)
                 # 对权重进行归一化
@@ -101,14 +100,12 @@ class ALBEF(nn.Module):
                 weights = kl_weight
 
             elif weight == 'gair_l2':
-                print('-------------------------gair_l2')
                 l2_loss = F.pairwise_distance(image_cls, text_cls, p=2)
                 reweight = ((-1.0+(int(10/2)-l2_loss)*5/(int(10/2))).tanh()+1)/2
                 gair_l2_weight = reweight * len(reweight) / reweight.sum()
                 weights = gair_l2_weight
 
             elif weight == 'gair_kl':
-                print('-------------------------gair_kl')
                 kl_loss = F.kl_div(image_cls.log_softmax(dim=-1), text_cls.softmax(dim=-1), reduction='none').sum(dim=-1)
                 reweight = ((-1.0+(int(10/2)-kl_loss)*5/(int(10/2))).tanh()+1)/2
                 gair_kl_weight = reweight * len(reweight) / reweight.sum()
