@@ -85,7 +85,7 @@ class ALBEF(nn.Module):
 
             ## D: to assign weights
             if weight == 'label_assign':
-                label_weights = [5 if x == 2 else 2 if x == 1 else 1 for x in targets]
+                label_weights = torch.tensor([5 if x == 2 else 2 if x == 1 else 1 for x in targets])
                 weights = label_weights
 
             elif weight == 'l2':
