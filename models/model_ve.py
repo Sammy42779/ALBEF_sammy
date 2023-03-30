@@ -84,7 +84,11 @@ class ALBEF(nn.Module):
             prediction = self.cls_head(output.last_hidden_state[:,0,:])     
 
             ## D: to assign weights
-            if weight == 'True':
+            if weight == 'label_assign':
+                label_weights = [5 if x == 2 else 2 if x == 1 else 1 for x in targets]
+                weights = label_weights
+
+            elif weight == 'l2':
                 l2_loss = F.pairwise_distance(image_cls, text_cls, p=2)
                 # 计算权重
                 l2_weight = 1.0 / torch.pow(l2_loss, 2)
