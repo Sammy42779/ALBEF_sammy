@@ -235,7 +235,6 @@ def main(args, config):
             
 
 if __name__ == '__main__':
-    os.environ['CUDA_VISIBLE_DEVICES']='4'
     parser = argparse.ArgumentParser()
     parser.add_argument('--config', default='/ssd2/ld/ICCV2023/multimodal_models/ALBEF_sammy/configs/VE.yaml')
     parser.add_argument('--output_dir', default='output/VE')  
