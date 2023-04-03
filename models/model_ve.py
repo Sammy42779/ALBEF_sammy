@@ -6,6 +6,26 @@ import torch
 from torch import nn
 import torch.nn.functional as F
 
+class FocalLoss(nn.Module):
+    def __init__(self, alpha=0.25, gamma=2.0):
+        super(FocalLoss, self).__init__()
+        self.alpha = alpha
+        self.gamma = gamma
+
+    def forward(self, logits, targets):
+        # Compute the softmax of the logits
+        probs = F.softmax(logits, dim=1)
+
+        # Get the probabilities of the true class labels
+        targets_one_hot = F.one_hot(targets, num_classes=probs.shape[1]).float()
+        true_probs = torch.sum(probs * targets_one_hot, dim=1)
+
+        # Compute the focal loss
+        focal_weight = (1 - true_probs).pow(self.gamma)
+        focal_loss = -1 * self.alpha * focal_weight * torch.log(true_probs)
+
+        return focal_loss.mean()
+
 class ALBEF(nn.Module):
     def __init__(self,                 
                  text_encoder = None,
@@ -38,6 +58,7 @@ class ALBEF(nn.Module):
         text_width = self.text_encoder.config.hidden_size
         self.vision_proj = nn.Linear(vision_width, embed_dim)
         self.text_proj = nn.Linear(text_width, embed_dim)   
+        self.focal_loss = FocalLoss(alpha=0.25, gamma=2.0)
 
         if self.distill:
             self.visual_encoder_m = VisionTransformer(
@@ -58,7 +79,7 @@ class ALBEF(nn.Module):
             self.momentum = 0.995
             
             
-    def forward(self, image, text, targets, alpha=0, train=True, p_shuffle=False, weight=False):
+    def forward(self, image, text, targets, alpha=0, train=True, p_shuffle=False, weight=False, focal_loss=False):
         
         image_embeds = self.visual_encoder(image, p_shuffle=p_shuffle) 
         image_atts = torch.ones(image_embeds.size()[:-1],dtype=torch.long).to(image.device)    
@@ -126,13 +147,19 @@ class ALBEF(nn.Module):
                                                return_dict = True
                                               )           
                     prediction_m = self.cls_head_m(output_m.last_hidden_state[:,0,:])   
+                
+                if focal_loss:
+                    fl = self.focal_loss(prediction, targets)
+                    loss = (1-alpha)*fl - alpha*torch.sum(
+                        F.log_softmax(prediction, dim=1)*F.softmax(prediction_m, dim=1),dim=1).mean()
 
-                # loss = (1-alpha)*F.cross_entropy(prediction, targets) - alpha*torch.sum(
-                #     F.log_softmax(prediction, dim=1)*F.softmax(prediction_m, dim=1),dim=1).mean()
-                loss = F.cross_entropy(prediction, targets, reduction='none')
-                loss = loss.mul(weights).mean()
-                loss = (1-alpha)*loss - alpha*torch.sum(
-                    F.log_softmax(prediction, dim=1)*F.softmax(prediction_m, dim=1),dim=1).mean()
+                else:
+                    # loss = (1-alpha)*F.cross_entropy(prediction, targets) - alpha*torch.sum(
+                    #     F.log_softmax(prediction, dim=1)*F.softmax(prediction_m, dim=1),dim=1).mean()
+                    loss = F.cross_entropy(prediction, targets, reduction='none')
+                    loss = loss.mul(weights).mean()
+                    loss = (1-alpha)*loss - alpha*torch.sum(
+                        F.log_softmax(prediction, dim=1)*F.softmax(prediction_m, dim=1),dim=1).mean()
             else:
                 ## cross-entropy for classification problem
                 loss = F.cross_entropy(prediction, targets)    
