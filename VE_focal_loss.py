@@ -56,7 +56,7 @@ def train(model, data_loader, optimizer, tokenizer, epoch, warmup_steps, device,
         else:
             alpha = config['alpha']*min(1,i/len(data_loader))
 
-        loss = model(images, text_inputs, targets=targets, train=True, alpha=alpha, focal_loss=True)
+        loss = model(images, text_inputs, targets=targets, train=True, alpha=alpha, focal_loss=args.loss)
         
         optimizer.zero_grad()
         loss.backward()
@@ -246,6 +246,7 @@ if __name__ == '__main__':
     parser.add_argument('--world_size', default=1, type=int, help='number of distributed processes')    
     parser.add_argument('--dist_url', default='env://', help='url used to set up distributed training')
     parser.add_argument('--distributed', default=True, type=bool)
+    parser.add_argument('--loss', default='focal_loss', type=str, help='focal_loss or cross_entropy')
     args = parser.parse_args()
 
     config = yaml.load(open(args.config, 'r'), Loader=yaml.Loader)
