@@ -79,7 +79,7 @@ class ALBEF(nn.Module):
             self.momentum = 0.995
             
             
-    def forward(self, image, text, targets, alpha=0, train=True, p_shuffle=False, weight=False, focal_loss=False):
+    def forward(self, image, text, targets, alpha=0, train=True, p_shuffle=False, weight=False, loss_type=False, lam=0.5):
         
         image_embeds = self.visual_encoder(image, p_shuffle=p_shuffle) 
         image_atts = torch.ones(image_embeds.size()[:-1],dtype=torch.long).to(image.device)    
@@ -148,18 +148,27 @@ class ALBEF(nn.Module):
                                               )           
                     prediction_m = self.cls_head_m(output_m.last_hidden_state[:,0,:])   
                 
-                if focal_loss:
+                if loss_type == 'focal_loss':
                     fl = self.focal_loss(prediction, targets)
                     loss = (1-alpha)*fl - alpha*torch.sum(
                         F.log_softmax(prediction, dim=1)*F.softmax(prediction_m, dim=1),dim=1).mean()
-
+                elif loss_type == 'focal_loss_reg':
+                    loss = (1-alpha)*F.cross_entropy(prediction, targets) - alpha*torch.sum(
+                        F.log_softmax(prediction, dim=1)*F.softmax(prediction_m, dim=1),dim=1).mean()
+                    loss = loss + self.focal_loss(prediction, targets) ## as a regularization
+                elif loss_type == 'mix_img_text':
+                    mixed_cls = lam * image_cls + (1-lam) * text_cls
+                    output_cls = output.last_hidden_state[:,0,:]
+                    kl_mixed_cls_fusion_loss = F.kl_div(mixed_cls.log_softmax(dim=-1), output_cls.softmax(dim=-1)).sum(dim=-1)
+                    loss = (1-alpha)*F.cross_entropy(prediction, targets) - alpha*torch.sum(
+                        F.log_softmax(prediction, dim=1)*F.softmax(prediction_m, dim=1),dim=1).mean() + kl_mixed_cls_fusion_loss
                 else:
-                    # loss = (1-alpha)*F.cross_entropy(prediction, targets) - alpha*torch.sum(
-                    #     F.log_softmax(prediction, dim=1)*F.softmax(prediction_m, dim=1),dim=1).mean()
                     loss = F.cross_entropy(prediction, targets, reduction='none')
                     loss = loss.mul(weights).mean()
                     loss = (1-alpha)*loss - alpha*torch.sum(
                         F.log_softmax(prediction, dim=1)*F.softmax(prediction_m, dim=1),dim=1).mean()
+                    # loss = (1-alpha)*F.cross_entropy(prediction, targets) - alpha*torch.sum(
+                    #     F.log_softmax(prediction, dim=1)*F.softmax(prediction_m, dim=1),dim=1).mean()
             else:
                 ## cross-entropy for classification problem
                 loss = F.cross_entropy(prediction, targets)    
