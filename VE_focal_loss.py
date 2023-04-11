@@ -56,7 +56,7 @@ def train(model, data_loader, optimizer, tokenizer, epoch, warmup_steps, device,
         else:
             alpha = config['alpha']*min(1,i/len(data_loader))
 
-        loss = model(images, text_inputs, targets=targets, train=True, alpha=alpha, loss_type=args.loss)
+        loss = model(images, text_inputs, targets=targets, train=True, alpha=alpha, loss_type=args.loss_type)
         
         optimizer.zero_grad()
         loss.backward()
