@@ -7,7 +7,7 @@
 #SBATCH --ntasks-per-node=1 # 每个节点上运行一个任务，默认一情况下也可理解为每个节点使用一个核心,最大不能超过24;
 #SBATCH --gres=gpu:4    # 指定作业的需要的GPU卡数量，最大不能超过4;
 
-path_dir='/home/zhengf_lab/cse12131104/ld'
+path_dir='/home/zhengf_lab/cse30016037/ld'
 
 source activate base 
 
