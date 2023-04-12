@@ -85,10 +85,10 @@ class ALBEF(nn.Module):
         image_atts = torch.ones(image_embeds.size()[:-1],dtype=torch.long).to(image.device)    
 
         ## D: to get cls token for computing weights
-        image_cls = self.vision_proj(image_embeds[:,0,:].detach()).detach()  
+        image_cls = F.normalize(self.vision_proj(image_embeds[:,0,:], dim=-1)).detach()
         text_output = self.text_encoder(text.input_ids, attention_mask = text.attention_mask, mode='text')
         text_embeds = text_output.last_hidden_state.detach()   
-        text_cls = F.normalize(self.text_proj(text_embeds[:,0,:])).detach()
+        text_cls = F.normalize(self.text_proj(text_embeds[:,0,:], dim=-1)).detach()
         
         if train:
             ## multimodal encoder (using image_embeds)
@@ -162,7 +162,7 @@ class ALBEF(nn.Module):
                     kl_mixed_cls_fusion_loss = F.kl_div(mixed_cls.log_softmax(dim=-1), output_cls.softmax(dim=-1)).sum(dim=-1)
                     loss = (1-alpha)*F.cross_entropy(prediction, targets) - alpha*torch.sum(
                         F.log_softmax(prediction, dim=1)*F.softmax(prediction_m, dim=1),dim=1).mean() + kl_mixed_cls_fusion_loss
-                else:
+                elif loss_type == 'basic':
                     loss = F.cross_entropy(prediction, targets, reduction='none')
                     loss = loss.mul(weights).mean()
                     loss = (1-alpha)*loss - alpha*torch.sum(
